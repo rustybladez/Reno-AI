@@ -2,21 +2,25 @@
 
 Messages are provider-neutral dicts; each provider converts them to its own format:
     {"role": "user" | "assistant", "content": str}
-    {"role": "assistant", "tool_calls": [ToolCall, ...]}
+    {"role": "assistant", "tool_calls": [ToolCall, ...], "raw": <provider's own turn or None>}
     {"role": "tool", "id": str | None, "name": str, "content": dict}   # a tool result
 """
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 from pydantic import BaseModel
 
 
-class ProviderBusyError(Exception):
+class ProviderError(Exception):
+    """The provider call failed."""
+
+
+class ProviderBusyError(ProviderError):
     """Rate-limited or temporarily unavailable, after retries."""
 
 
-class ProviderConfigError(Exception):
+class ProviderConfigError(ProviderError):
     """Missing API key or unknown provider."""
 
 
@@ -33,6 +37,10 @@ class ProviderResult:
 
     text: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
+    # The provider's own record of the model turn, replayed as-is on the next request
+    # (Gemini needs its "thought signatures" sent back with function calls).
+    raw: Any = None
+    model: str | None = None  # which model produced this (providers may switch models)
 
 
 class Provider(Protocol):

@@ -16,7 +16,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TIMEZONE = ZoneInfo("Asia/Dhaka")
 
 DEFAULT_PROVIDER = "gemini"
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+# Tried in order when the current model is busy or out of free quota (quotas are per model).
+DEFAULT_GEMINI_FALLBACK_MODELS = "gemini-flash-lite-latest,gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-3.5-flash"
+DEFAULT_GEMINI_THINKING_LEVEL = "low"  # lite models at their default (minimal) thinking stretch rules by analogy
 DEFAULT_POLICY_PATH = "data/policy.json"
 
 
@@ -25,6 +28,8 @@ class Settings:
     llm_provider: str
     gemini_api_key: str | None
     gemini_model: str
+    gemini_fallback_models: list[str]
+    gemini_thinking_level: str | None
     policy_json: str | None
     policy_path: Path
     openai_compat_base_url: str | None
@@ -49,6 +54,10 @@ def load_settings() -> Settings:
         llm_provider=_env("LLM_PROVIDER", DEFAULT_PROVIDER).lower(),
         gemini_api_key=_env("GEMINI_API_KEY"),
         gemini_model=_env("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+        gemini_fallback_models=[
+            m.strip() for m in _env("GEMINI_FALLBACK_MODELS", DEFAULT_GEMINI_FALLBACK_MODELS).split(",") if m.strip()
+        ],
+        gemini_thinking_level=_env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL),
         policy_json=_env("POLICY_JSON"),
         policy_path=policy_path,
         openai_compat_base_url=_env("OPENAI_COMPAT_BASE_URL"),

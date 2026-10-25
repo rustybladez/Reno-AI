@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "title": "Example Co Leave Policy (dummy, for tests only)",
+    "policy_number": "EX-POL-001",
+    "version": "1.0",
+    "effective_date": "1 January 2000",
+    "owner": "People Team",
+    "applies_to": "All example employees",
+    "hr_contact": "people@example.invalid"
+  },
+  "sections": [
+    {
+      "id": "1",
+      "parent": "",
+      "heading": "Purpose",
+      "path": "1. Purpose",
+      "text": "This example policy exists only so that automated tests can run without the real policy."
+    },
+    {
+      "id": "2.1(a)",
+      "parent": "2.1",
+      "heading": "Holiday Leave",
+      "path": "2. Types of Leave > 2.1 Holiday Leave",
+      "text": "Employees receive 99 days of Holiday Leave per year."
+    },
+    {
+      "id": "3",
+      "parent": "",
+      "heading": "Confidentiality",
+      "path": "3. Confidentiality",
+      "text": "Leave records are confidential."
+    }
+  ]
+}

@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+PRD.md
+XYZ Company Leave Policy (Sample).pdf
+AI Solutions Specialist - Take-Home Assessment.pdf
+# Assessment-confidential content (policy facts) — never in the public repo
+*.pdf
+data/policy.json
+evals/cases.yaml
+evals/results/
+data/policy.draft.json

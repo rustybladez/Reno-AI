@@ -1,0 +1,24 @@
+[project]
+name = "reno-ai"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=2.33.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.14.1",
+    "python-dotenv>=1.2.4",
+    "pyyaml>=6.0.3",
+    "rapidfuzz>=3.14.6",
+    "streamlit>=1.66.1",
+    "tzdata>=2026.5",
+]
+
+[dependency-groups]
+dev = [
+    "pymupdf>=2.0",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

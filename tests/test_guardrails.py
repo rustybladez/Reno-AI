@@ -159,6 +159,8 @@ def test_parse_output_accepts_fenced_json_and_rejects_garbage():
     assert parse_output(raw).type == "smalltalk"
     assert parse_output(f"```json\n{raw}\n```").type == "smalltalk"
     assert parse_output("not json") is None
+    assert parse_output(f"Here is my answer: {raw} Hope that helps!").type == "smalltalk"  # prose around it
+    assert parse_output('Here: {"type": "answer"} done') is None  # extracted object must still match the schema
     assert parse_output('{"type": "answer"}') is None
     assert parse_output(None) is None
 

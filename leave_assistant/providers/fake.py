@@ -29,7 +29,8 @@ class FakeProvider:
         schema: type[BaseModel],
         tools: list[dict] | None = None,
     ) -> ProviderResult:
-        question = next(m["content"] for m in reversed(messages) if m["role"] == "user")
+        # The most recent user message that has a script (skips e.g. the invalid-JSON retry instruction).
+        question = next(m["content"] for m in reversed(messages) if m["role"] == "user" and m["content"] in self.script)
         self.calls.append({"question": question, "messages": list(messages), "tools": tools})
 
         steps = self.script[question]

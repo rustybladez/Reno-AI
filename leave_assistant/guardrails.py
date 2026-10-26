@@ -52,7 +52,16 @@ def parse_output(raw: str | None) -> LLMOutput | None:
     try:
         return LLMOutput.model_validate_json(text)
     except ValidationError:
-        return None
+        pass
+    # Tolerate prose around the JSON object ("Here is the answer: {...}"): the object itself must
+    # still pass the full schema, so nothing unvalidated gets through.
+    start, end = text.find("{"), text.rfind("}")
+    if 0 <= start < end:
+        try:
+            return LLMOutput.model_validate_json(text[start:end + 1])
+        except ValidationError:
+            pass
+    return None
 
 
 # ---------- 2. citation and quote verification ----------

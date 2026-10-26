@@ -3,7 +3,7 @@
 import json
 from datetime import date
 
-from leave_assistant.assistant import MAX_TOOL_ROUNDS, ask
+from leave_assistant.assistant import MAX_TOOL_ROUNDS, RETRY_INSTRUCTION, ask
 from leave_assistant.guardrails import FALLBACK_TEXT
 from leave_assistant.providers.base import ProviderResult, ToolCall
 from leave_assistant.providers.fake import FakeProvider
@@ -43,6 +43,18 @@ def test_invalid_json_twice_becomes_fallback(example_policy):
     assert response.text == FALLBACK_TEXT
     assert response.debug["retried_invalid_json"] is True
     assert len(provider.calls) == 2
+
+
+def test_retry_tells_the_model_what_went_wrong_and_debug_keeps_the_bad_replies(example_policy):
+    q = "Broken twice?"
+    provider = FakeProvider({q: ["Sure! The answer is 99 days.", ""]})
+    response = run(provider, q, example_policy)
+
+    retry_messages = provider.calls[1]["messages"]
+    assert retry_messages[-2] == {"role": "assistant", "content": "Sure! The answer is 99 days."}
+    assert retry_messages[-1] == {"role": "user", "content": RETRY_INSTRUCTION}
+    assert response.debug["invalid_outputs"] == ["Sure! The answer is 99 days.", "<empty>"]
+    assert response.text == FALLBACK_TEXT
 
 
 def test_invalid_json_then_valid_is_recovered(example_policy):

@@ -14,6 +14,11 @@ from .schema import AssistantResponse, LLMOutput, Turn
 from .tools import TOOL_SPECS, dispatch
 
 MAX_TOOL_ROUNDS = 6
+INVALID_OUTPUT_PREVIEW = 500  # characters of an invalid model reply kept in the debug details
+RETRY_INSTRUCTION = (
+    "Your previous reply was not a valid JSON object matching the schema. Reply again with only "
+    "the JSON object, following the rules and the schema in the system prompt."
+)
 
 
 @lru_cache(maxsize=1)
@@ -41,13 +46,21 @@ def ask(
     raw = run_tool_loop(provider, system, messages, tool_log, models_used)
     output = guardrails.parse_output(raw)
     retried = False
+    invalid_outputs: list[str] = []  # what the model returned when it wasn't valid (for debugging)
     if output is None:
-        # One retry for invalid JSON, with the tool results already in the messages.
+        # One retry for invalid JSON, with the tool results already in the messages, telling the
+        # model what went wrong (repeating the identical request tends to fail the same way).
         retried = True
+        invalid_outputs.append((raw or "<empty>")[:INVALID_OUTPUT_PREVIEW])
+        if raw:
+            messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "user", "content": RETRY_INSTRUCTION})
         result = provider.generate(system, messages, LLMOutput, tools=None)
         models_used.append(result.model)
         raw = result.text
         output = guardrails.parse_output(raw)
+        if output is None:
+            invalid_outputs.append((raw or "<empty>")[:INVALID_OUTPUT_PREVIEW])
 
     number_sources = (
         [question, today.isoformat(), format_today(today)]
@@ -63,6 +76,7 @@ def ask(
         "raw_citations": [c.model_dump() for c in output.citations] if output else [],
         "tool_calls": tool_log,
         "retried_invalid_json": retried,
+        "invalid_outputs": invalid_outputs,
         "final_type": response.type,
         "latency_s": round(time.perf_counter() - started, 2),
     })

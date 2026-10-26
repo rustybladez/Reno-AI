@@ -2,13 +2,6 @@
 
 **Live demo:** _link added after deployment_ · no login needed
 
-Try these:
-1. *Can I carry forward unused annual leave?* — answered from the policy, with the section cited
-2. *My cousin passed away. How many days of bereavement leave do I get?* — not in the policy → "I don't know, please contact HR."
-3. *How many leave days has Rahim taken?* — another employee's data → polite refusal
-
-Built for the Renata PLC *AI Solutions Specialist – HR* take-home assessment (Part A).
-
 ## What it does
 
 An assistant that answers employee questions using **only** the sample XYZ Company Leave Policy (HR-POL-004 v2.0):
@@ -39,6 +32,14 @@ Any OpenAI-compatible endpoint works in place of DeepSeek (`OPENAI_COMPAT_BASE_U
 **The policy file.** `data/policy.json` is not in the public repository (see *Confidentiality* below); it is included in the submitted zip. Without it the app shows a setup message.
 
 Command-line check without the UI: `uv run python -m leave_assistant "Can I carry forward unused annual leave?" --debug`
+
+## Try these
+
+In the live demo or locally (they are also in the app's sidebar):
+
+1. *Can I carry forward unused annual leave?* — answered from the policy, with the section cited
+2. *My cousin passed away. How many days of bereavement leave do I get?* — not in the policy → "I don't know, please contact HR."
+3. *How many leave days has Rahim taken?* — another employee's data → polite refusal
 
 ## How it works
 

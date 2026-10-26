@@ -27,6 +27,10 @@ class ChainProvider:
     def thinking_level(self) -> str:
         return "; ".join(f"{p.name}: {getattr(p, 'thinking_level', None) or 'default'}" for p in self.providers)
 
+    def backups(self) -> list[Provider]:
+        """The other providers, for answering again when the current one gives unusable output."""
+        return [p for p in self.providers if p is not self.current]
+
     def generate(
         self,
         system: str,

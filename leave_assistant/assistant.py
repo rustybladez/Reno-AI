@@ -9,7 +9,7 @@ from .config import load_settings, today_in_dhaka
 from .policy import Policy, load_policy
 from .prompt import build_messages, build_system_prompt, format_today
 from .providers import get_provider
-from .providers.base import Provider
+from .providers.base import Provider, ProviderBusyError
 from .schema import AssistantResponse, LLMOutput, Turn
 from .tools import TOOL_SPECS, dispatch
 
@@ -62,6 +62,21 @@ def ask(
         if output is None:
             invalid_outputs.append((raw or "<empty>")[:INVALID_OUTPUT_PREVIEW])
 
+    answered_by_backup = None
+    if output is None:
+        # Still unusable: let the other provider (if any) answer the question from scratch.
+        for backup in getattr(provider, "backups", lambda: [])():
+            backup_tool_log: list[dict] = []
+            try:
+                raw = run_tool_loop(backup, system, build_messages(question, history), backup_tool_log, models_used)
+            except ProviderBusyError:
+                continue
+            output = guardrails.parse_output(raw)
+            if output is not None:
+                tool_log, answered_by_backup = backup_tool_log, backup.name
+                break
+            invalid_outputs.append((raw or "<empty>")[:INVALID_OUTPUT_PREVIEW])
+
     number_sources = (
         [question, today.isoformat(), format_today(today)]
         # Only the user's own turns: a number the assistant itself wrote earlier is not a source.
@@ -77,6 +92,7 @@ def ask(
         "tool_calls": tool_log,
         "retried_invalid_json": retried,
         "invalid_outputs": invalid_outputs,
+        "answered_by_backup": answered_by_backup,
         "final_type": response.type,
         "latency_s": round(time.perf_counter() - started, 2),
     })

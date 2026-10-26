@@ -5,7 +5,8 @@ from datetime import date
 
 from leave_assistant.assistant import MAX_TOOL_ROUNDS, RETRY_INSTRUCTION, ask
 from leave_assistant.guardrails import FALLBACK_TEXT
-from leave_assistant.providers.base import ProviderResult, ToolCall
+from leave_assistant.providers.base import ProviderBusyError, ProviderResult, ToolCall
+from leave_assistant.providers.chain import ChainProvider
 from leave_assistant.providers.fake import FakeProvider
 from leave_assistant.schema import Turn
 
@@ -55,6 +56,33 @@ def test_retry_tells_the_model_what_went_wrong_and_debug_keeps_the_bad_replies(e
     assert retry_messages[-1] == {"role": "user", "content": RETRY_INSTRUCTION}
     assert response.debug["invalid_outputs"] == ["Sure! The answer is 99 days.", "<empty>"]
     assert response.text == FALLBACK_TEXT
+
+
+def test_backup_provider_answers_when_primary_output_stays_invalid(example_policy):
+    q = "Glitchy primary?"
+    primary = FakeProvider({q: ["not json", "still not json"]})
+    backup = FakeProvider({q: [final_json(answer="You get 99 days.", citations=[("2.1(a)", "99 days")])]})
+    primary.name, backup.name = "primary", "backup"
+    response = run(ChainProvider([primary, backup]), q, example_policy)
+
+    assert response.type == "answer" and response.text.startswith("You get 99 days.")
+    assert response.debug["answered_by_backup"] == "backup"
+    assert response.debug["invalid_outputs"] == ["not json", "still not json"]
+    # The backup answered from scratch: a fresh conversation, not the primary's failed one.
+    assert [m["content"] for m in backup.calls[0]["messages"]] == [q]
+
+
+def test_busy_backup_still_gives_the_fallback(example_policy):
+    class Busy:
+        name, model = "busy", "busy"
+
+        def generate(self, *args, **kwargs):
+            raise ProviderBusyError("busy")
+
+    q = "Glitchy and busy?"
+    primary = FakeProvider({q: ["not json", "still not json"]})
+    response = run(ChainProvider([primary, Busy()]), q, example_policy)
+    assert response.text == FALLBACK_TEXT and response.debug["answered_by_backup"] is None
 
 
 def test_invalid_json_then_valid_is_recovered(example_policy):

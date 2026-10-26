@@ -36,7 +36,7 @@ SAMPLE_QUESTIONS = {
         "I'm taking annual leave from Thursday 5 November to Thursday 12 November 2026. How many leave days will be deducted?",
     ],
     "Not in the policy": [
-        "My cousin passed away. How many days of bereavement leave do I get?",
+        "Is there study or exam leave?",
         "What is the work-from-home policy?",
     ],
     "Someone else's data": [
@@ -48,7 +48,7 @@ SAMPLE_QUESTIONS = {
 # One starter per behaviour reviewers check: in the policy, not in it, someone else's data.
 WELCOME_QUESTIONS = [
     (":material/menu_book:", "Can I carry forward unused annual leave?"),
-    (":material/help:", "My cousin passed away. How many days of bereavement leave do I get?"),
+    (":material/help:", "Is there study or exam leave?"),
     (":material/lock:", "How many leave days has Rahim taken?"),
 ]
 MAX_QUESTION_CHARS = 500

@@ -67,7 +67,7 @@ def test_typed_question_gets_cited_answer_and_policy_text(app_with):
 
 
 def test_sample_button_sends_its_question(app_with):
-    q = "My cousin passed away. How many days of bereavement leave do I get?"
+    q = "Is there study or exam leave?"
     at = app_with(FakeProvider({q: [final_json("not_covered")]}))
     next(b for b in at.sidebar.button if b.label == q).click().run()
 

@@ -55,7 +55,7 @@ Command-line check without the UI: `uv run python -m leave_assistant "Can I carr
 In the live demo or locally (they are also in the app's sidebar):
 
 1. *Can I carry forward unused annual leave?* — answered from the policy, with the section cited
-2. *My cousin passed away. How many days of bereavement leave do I get?* — not in the policy → "I don't know, please contact HR."
+2. *Is there study or exam leave?* — not in the policy → "I don't know, please contact HR."
 3. *How many leave days has Rahim taken?* — another employee's data → polite refusal
 
 ## How it works

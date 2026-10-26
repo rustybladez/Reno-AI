@@ -15,10 +15,14 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TIMEZONE = ZoneInfo("Asia/Dhaka")
 
-DEFAULT_PROVIDER = "gemini"
+# DeepSeek first (paid, no quotas), Gemini as the fallback (free tier, per-model quotas).
+DEFAULT_PROVIDER = "openai_compat"
+DEFAULT_OPENAI_COMPAT_BASE_URL = "https://api.deepseek.com"
+DEFAULT_OPENAI_COMPAT_MODEL = "deepseek-flash"
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
-# Tried in order when the current model is busy or out of free quota (quotas are per model).
-DEFAULT_GEMINI_FALLBACK_MODELS = "gemini-flash-lite-latest,gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-3.5-flash"
+# Extra Gemini models tried when the main one is busy (free-tier quotas are per model). Empty by
+# default: only models that have been through the eval suite should answer users.
+DEFAULT_GEMINI_FALLBACK_MODELS = ""
 DEFAULT_GEMINI_THINKING_LEVEL = "medium"  # at "low", lite models skipped tool calls and guessed dates (M4 evals)
 DEFAULT_POLICY_PATH = "data/policy.json"
 
@@ -35,6 +39,8 @@ class Settings:
     openai_compat_base_url: str | None
     openai_compat_api_key: str | None
     openai_compat_model: str | None
+    openai_compat_thinking: str | None  # DeepSeek: "enabled" | "disabled"; unset = server default
+    openai_compat_reasoning_effort: str | None  # DeepSeek: "low" | "high" | "max"; unset = server default
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -60,9 +66,11 @@ def load_settings() -> Settings:
         gemini_thinking_level=_env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL),
         policy_json=_env("POLICY_JSON"),
         policy_path=policy_path,
-        openai_compat_base_url=_env("OPENAI_COMPAT_BASE_URL"),
+        openai_compat_base_url=_env("OPENAI_COMPAT_BASE_URL", DEFAULT_OPENAI_COMPAT_BASE_URL),
         openai_compat_api_key=_env("OPENAI_COMPAT_API_KEY"),
-        openai_compat_model=_env("OPENAI_COMPAT_MODEL"),
+        openai_compat_model=_env("OPENAI_COMPAT_MODEL", DEFAULT_OPENAI_COMPAT_MODEL),
+        openai_compat_thinking=_env("OPENAI_COMPAT_THINKING"),
+        openai_compat_reasoning_effort=_env("OPENAI_COMPAT_REASONING_EFFORT"),
     )
 
 

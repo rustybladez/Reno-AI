@@ -5,10 +5,12 @@ from leave_assistant.schema import LLMOutput
 
 
 def test_settings_defaults(monkeypatch):
-    for name in ("LLM_PROVIDER", "GEMINI_MODEL", "POLICY_JSON", "POLICY_PATH"):
+    for name in ("LLM_PROVIDER", "GEMINI_MODEL", "GEMINI_FALLBACK_MODELS", "OPENAI_COMPAT_MODEL", "POLICY_JSON", "POLICY_PATH"):
         monkeypatch.setenv(name, "")
     settings = load_settings()
-    assert settings.llm_provider == "gemini"
+    assert settings.llm_provider == "openai_compat"
+    assert settings.openai_compat_model == "deepseek-flash"
+    assert settings.gemini_fallback_models == []
     assert settings.gemini_model == DEFAULT_GEMINI_MODEL
     assert settings.policy_json is None
     assert settings.policy_path.name == "policy.json"

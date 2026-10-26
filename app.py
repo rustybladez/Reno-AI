@@ -21,6 +21,7 @@ from leave_assistant.schema import AssistantResponse, Turn
 SETTING_NAMES = [
     "LLM_PROVIDER", "GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_FALLBACK_MODELS", "GEMINI_THINKING_LEVEL",
     "POLICY_JSON", "POLICY_PATH", "OPENAI_COMPAT_BASE_URL", "OPENAI_COMPAT_API_KEY", "OPENAI_COMPAT_MODEL",
+    "OPENAI_COMPAT_THINKING", "OPENAI_COMPAT_REASONING_EFFORT",
 ]
 
 SAMPLE_QUESTIONS = {
@@ -43,7 +44,7 @@ SAMPLE_QUESTIONS = {
     ],
 }
 
-BUSY_MESSAGE = "The assistant is busy right now (free API limit). Please wait a minute and try again."
+BUSY_MESSAGE = "The assistant is busy right now. Please wait a minute and try again."
 SETUP_MESSAGE = "The assistant isn't set up yet: {error} See README → Setup."
 
 
@@ -67,18 +68,18 @@ def render_answer(response: AssistantResponse, show_debug: bool) -> None:
     st.markdown(response.text)
     if response.citations:
         policy = get_policy()
-        with st.expander("Policy text"):
+        with st.expander("Policy text", icon=":material/menu_book:", type="compact"):
             for section_id in dict.fromkeys(c.section_id for c in response.citations):
                 section = policy.get(section_id)
                 if section:
                     st.markdown(f"**{policy.label(section_id)}**")
                     st.markdown(section.text)
     if response.calculations:
-        with st.expander("How this was calculated"):
+        with st.expander("How this was calculated", icon=":material/calculate:", type="compact"):
             for line in response.calculations:
                 st.markdown(f"- {line}")
     if show_debug:
-        with st.expander("Debug details"):
+        with st.expander("Debug details", icon=":material/bug_report:", type="compact"):
             st.json(response.debug)
 
 
@@ -95,7 +96,7 @@ def sidebar(today_text: str, provider_label: str) -> bool:
         st.divider()
         st.markdown(f"**Today:** {today_text}")
         st.caption("Relative dates like \"next Sunday\" are worked out from this date.")
-        if st.button("Clear chat"):
+        if st.button("Clear chat", icon=":material/delete:"):
             st.session_state.messages = []
             st.rerun()
         show_debug = st.toggle("Show debug details", value=False)
@@ -107,15 +108,15 @@ def sidebar(today_text: str, provider_label: str) -> bool:
             "- If the policy doesn't cover a question, it says so instead of guessing.\n"
             "- It never shares other employees' personal data.\n"
         )
-        st.caption(f"Model: {provider_label}. Dates and sums are calculated by code, not the model.")
+        st.caption(f"Models: {provider_label}. Dates and sums are calculated by code, not the model.")
     return show_debug
 
 
 def main() -> None:
-    st.set_page_config(page_title="XYZ Leave Policy Assistant", page_icon="📄")
+    st.set_page_config(page_title="Reno AI", page_icon=":material/description:")
     copy_secrets_to_env()
 
-    st.title("XYZ Leave Policy Assistant")
+    st.title("Reno AI — Leave Policy Assistant")
     st.caption(
         "Answers come only from the XYZ Company Leave Policy (HR-POL-004 v2.0). "
         "Sample document for assessment purposes."
@@ -125,11 +126,11 @@ def main() -> None:
         get_policy()
         provider = cached_provider()
     except (PolicyNotFoundError, ProviderConfigError) as e:
-        st.error(SETUP_MESSAGE.format(error=e))
+        st.error(SETUP_MESSAGE.format(error=e), title="Setup needed")
         st.stop()
 
     today = today_in_dhaka()
-    provider_label = f"{provider.name} / {getattr(provider, 'models', [provider.model])[0]}"
+    provider_label = " → ".join(getattr(provider, "models", [provider.model]))  # primary, then fallback
     show_debug = sidebar(format_today(today), provider_label)
 
     if "messages" not in st.session_state:
@@ -142,7 +143,8 @@ def main() -> None:
             else:
                 st.markdown(message["content"])
 
-    typed = st.chat_input("Ask about the leave policy…")
+    # "disable": no second question while one is being answered (avoids duplicate model calls).
+    typed = st.chat_input("Ask about the leave policy…", submit_mode="disable")
     question = typed or st.session_state.pop("pending_question", None)
 
     if question:
@@ -156,11 +158,11 @@ def main() -> None:
                 with st.spinner("Checking the policy…"):
                     response = ask(question, history=history, today=today, provider=provider)
             except ProviderBusyError:
-                st.warning(BUSY_MESSAGE)
+                st.warning(BUSY_MESSAGE, title="Busy")
                 st.session_state.messages.pop()  # let the user ask again
                 return
             except ProviderError as e:
-                st.error(f"Something went wrong calling the model: {e}")
+                st.error(str(e), title="Something went wrong calling the model")
                 st.session_state.messages.pop()
                 return
             render_answer(response, show_debug)

@@ -66,6 +66,9 @@ def _clean_number(value: float) -> int | float:
 
 # ---------- tools ----------
 
+_SYMBOLS = {ast.Add: "+", ast.Sub: "-", ast.Mult: "×", ast.Div: "÷"}
+MAX_LISTED_DAYS = 31  # list the individual days only for short moves
+
 _OPERATORS: dict[type, Callable] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -76,15 +79,19 @@ _OPERATORS: dict[type, Callable] = {
 }
 
 
-def _evaluate(node: ast.AST) -> float:
+def _evaluate(node: ast.AST, steps: list[str]) -> float:
+    """Evaluate the expression tree, recording each binary operation in `steps`."""
     if isinstance(node, ast.Expression):
-        return _evaluate(node.body)
+        return _evaluate(node.body, steps)
     if isinstance(node, ast.Constant) and type(node.value) in (int, float):
         return node.value
     if isinstance(node, ast.BinOp) and type(node.op) in _OPERATORS:
-        return _OPERATORS[type(node.op)](_evaluate(node.left), _evaluate(node.right))
+        left, right = _evaluate(node.left, steps), _evaluate(node.right, steps)
+        value = _OPERATORS[type(node.op)](left, right)
+        steps.append(f"{_clean_number(left)} {_SYMBOLS[type(node.op)]} {_clean_number(right)} = {_clean_number(value)}")
+        return value
     if isinstance(node, ast.UnaryOp) and type(node.op) in _OPERATORS:
-        return _OPERATORS[type(node.op)](_evaluate(node.operand))
+        return _OPERATORS[type(node.op)](_evaluate(node.operand, steps))
     raise ToolInputError("only numbers, + - * / and brackets are allowed")
 
 
@@ -101,11 +108,15 @@ def calculate(expression: str) -> dict:
         tree = ast.parse(cleaned, mode="eval")
     except SyntaxError:
         raise ToolInputError(f"could not parse expression {expression!r}")
+    steps: list[str] = []
     try:
-        value = _evaluate(tree)
+        value = _evaluate(tree, steps)
     except ZeroDivisionError:
         raise ToolInputError("division by zero")
-    return {"expression": expression, "result": _clean_number(value)}
+    result = {"expression": expression, "result": _clean_number(value)}
+    if len(steps) > 1:
+        result["steps"] = steps  # the working, so intermediate values (e.g. a daily rate) are computed too
+    return result
 
 
 def add_calendar_days(date: str, days: int) -> dict:
@@ -125,11 +136,20 @@ def add_working_days(date: str, days: int) -> dict:
         raise ToolInputError("days is too large")
     step = 1 if n >= 0 else -1
     remaining = abs(n)
+    counted, skipped = [], []
     while remaining:
         current += timedelta(days=step)
         if _is_working_day(current):
             remaining -= 1
-    return _date_result(current)
+            counted.append(current)
+        else:
+            skipped.append(current)
+    result = _date_result(current)
+    if abs(n) <= MAX_LISTED_DAYS:
+        # The working, so the model can explain which days were counted and skipped.
+        result["counted_working_days"] = [f"{d.isoformat()} ({d:%A})" for d in counted]
+        result["skipped_weekly_holidays"] = [f"{d.isoformat()} ({d:%A})" for d in skipped]
+    return result
 
 
 def _date_range(start: str, end: str) -> list[date]:
@@ -199,7 +219,8 @@ TOOL_SPECS: list[dict] = [
     {
         "name": "calculate",
         "description": "Evaluate an arithmetic expression with numbers, + - * / and brackets. "
-        "Use for encashment, Leave Without Pay deductions and leave accrual.",
+        "Use for encashment, Leave Without Pay deductions and leave accrual. "
+        "Returns the result and, for several operations, each step of the working.",
         "parameters": {
             "type": "object",
             "properties": {"expression": {"type": "string", "description": "e.g. 45000 / 30 * 12"}},
@@ -228,7 +249,8 @@ TOOL_SPECS: list[dict] = [
     {
         "name": "add_working_days",
         "description": "Move forward (or back, if negative) by a number of working days, "
-        "skipping the weekly holidays (Friday and Saturday). Does not know public holidays.",
+        "skipping the weekly holidays (Friday and Saturday). Does not know public holidays. "
+        "Returns the date and the days counted and skipped.",
         "parameters": {
             "type": "object",
             "properties": {"date": _DATE, "days": {"type": "integer"}},

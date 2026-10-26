@@ -90,8 +90,9 @@ def test_parent_id_citation_with_quote_in_child_is_valid(example_policy):
 
 
 def test_section_id_variants_are_accepted(example_policy):
-    response = apply_guardrails(output(citations=[Citation(section_id="Section 2.1 (a)", quote=GOOD_QUOTE)]), example_policy)
-    assert response.type == "answer"
+    for section_id in ("Section 2.1 (a)", "[2.1(a)]", "§2.1(a)"):
+        response = apply_guardrails(output(citations=[Citation(section_id=section_id, quote=GOOD_QUOTE)]), example_policy)
+        assert response.type == "answer", section_id
 
 
 def test_quote_matching_tolerates_case_quotes_dashes_and_ellipsis():

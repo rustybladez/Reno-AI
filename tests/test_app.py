@@ -47,7 +47,7 @@ def all_markdown(at: AppTest) -> str:
 def test_page_renders_with_sidebar(app_with):
     at = app_with(FakeProvider({}))
     assert not at.exception
-    assert at.title[0].value == "XYZ Leave Policy Assistant"
+    assert at.title[0].value == "Reno AI — Leave Policy Assistant"
     assert len(at.sidebar.button) >= 9  # sample questions + "Clear chat"
     assert any("Today:" in m.value for m in at.sidebar.markdown)
     assert any("Conversations are not stored." in c.value for c in at.caption)

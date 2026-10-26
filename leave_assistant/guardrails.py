@@ -93,8 +93,10 @@ def quote_matches(quote: str, section_text: str) -> str | None:
 
 
 def clean_section_id(section_id: str) -> str:
-    """'Section 4.1 (d)' / '§4.1(d)' -> '4.1(d)'."""
-    cleaned = re.sub(r"^(section|sec\.?|§)\s*", "", section_id.strip(), flags=re.IGNORECASE)
+    """'Section 4.1 (d)' / '§4.1(d)' / '[4.1(d)]' -> '4.1(d)'."""
+    # The prompt shows ids in [brackets], so models sometimes copy the brackets.
+    cleaned = section_id.strip().removeprefix("[").removesuffix("]").strip()
+    cleaned = re.sub(r"^(section|sec\.?|§)\s*", "", cleaned, flags=re.IGNORECASE)
     return cleaned.replace(" ", "")
 
 

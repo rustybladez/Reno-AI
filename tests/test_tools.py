@@ -23,7 +23,15 @@ def test_count_working_days_skips_friday_and_saturday():
 def test_add_working_days_skips_weekend():
     assert add_working_days("2026-10-28", 2) == {
         "date": "2026-11-01", "weekday": "Sunday", "display": "1 November 2026",
+        "counted_working_days": ["2026-10-29 (Thursday)", "2026-11-01 (Sunday)"],
+        "skipped_weekly_holidays": ["2026-10-30 (Friday)", "2026-10-31 (Saturday)"],
     }
+
+
+def test_calculate_shows_its_working():
+    assert calculate("60000 / 30 * 7")["steps"] == ["60000 ÷ 30 = 2000", "2000 × 7 = 14000"]
+    assert "steps" not in calculate("45000 / 30")  # a single step is just the result
+    assert calculate("(5 - 3) * 1.67")["steps"] == ["5 - 3 = 2", "2 × 1.67 = 3.34"]
 
 
 def test_add_calendar_days():

@@ -1,6 +1,6 @@
 """Evaluation runner (PRD §12): runs every case through ask() and checks the result.
 
-    uv run python -m evals.run_evals [--provider gemini] [--model X] [--only A01,B03] [--delay 13]
+    uv run python -m evals.run_evals [--provider gemini] [--model X] [--no-fallback] [--only A01,B03] [--delay 13]
 
 All checks are deterministic (no LLM-as-judge). Writes a console summary and a Markdown
 report to evals/results/<provider>_<model>_<timestamp>.md. Exit code 0 = targets met.
@@ -356,6 +356,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m evals.run_evals")
     parser.add_argument("--provider", choices=["gemini", "openai_compat"])
     parser.add_argument("--model", help="primary model (fallback models are still tried when it is busy)")
+    parser.add_argument("--no-fallback", action="store_true",
+                        help="use only the primary provider and model, so the results measure that one model")
     parser.add_argument("--only", help="comma-separated case ids, e.g. A01,B03")
     parser.add_argument("--delay", type=float, default=DEFAULT_DELAY_S, help="seconds between cases")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
@@ -366,14 +368,15 @@ def main() -> None:
     if args.provider:
         settings = dataclasses.replace(settings, llm_provider=args.provider)
     if args.model:
-        settings = dataclasses.replace(settings, gemini_model=args.model)
+        field_name = "gemini_model" if settings.llm_provider == "gemini" else "openai_compat_model"
+        settings = dataclasses.replace(settings, **{field_name: args.model})
     if args.policy:
         settings = dataclasses.replace(settings, policy_json=None, policy_path=args.policy.resolve())
 
     try:
         cases = load_cases(args.cases)
         policy = load_policy(settings)
-        provider = get_provider(settings)
+        provider = get_provider(settings, fallback=not args.no_fallback)
     except (OSError, ValueError, PolicyNotFoundError, ProviderError) as e:
         sys.exit(f"Error: {e}")
 

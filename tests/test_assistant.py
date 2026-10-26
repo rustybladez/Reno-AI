@@ -66,7 +66,8 @@ def test_tool_call_then_final_answer(example_policy):
 
     assert response.debug["tool_calls"] == [
         {"name": "calculate", "args": {"expression": "45000 / 30 * 12"},
-         "result": {"expression": "45000 / 30 * 12", "result": 18000}},
+         "result": {"expression": "45000 / 30 * 12", "result": 18000,
+                    "steps": ["45000 ÷ 30 = 1500", "1500 × 12 = 18000"]}},
     ]
     assert response.calculations == ["45,000 ÷ 30 × 12 = 18,000"]
     assert response.debug["unverified_numbers"] == []  # 18,000 comes from the tool

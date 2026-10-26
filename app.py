@@ -9,6 +9,7 @@ Conversations live in st.session_state only and are never stored.
 import os
 
 import streamlit as st
+from streamlit.errors import StreamlitSecretNotFoundError
 
 from leave_assistant.assistant import ask, get_policy
 from leave_assistant.config import load_settings, today_in_dhaka
@@ -55,7 +56,7 @@ def copy_secrets_to_env() -> str | None:
     """
     try:
         secrets = {name: st.secrets[name] for name in SETTING_NAMES if name in st.secrets}
-    except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError) as e:
+    except (FileNotFoundError, StreamlitSecretNotFoundError) as e:
         # Streamlit raises the same error for "no secrets file" (fine locally: .env is used)
         # and for a malformed one, which must not be ignored silently.
         return str(e) if "Error parsing secrets" in str(e) else None

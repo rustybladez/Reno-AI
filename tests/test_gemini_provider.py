@@ -23,6 +23,12 @@ def test_missing_key_is_a_config_error():
         GeminiProvider(None, ["some-model"])
 
 
+def test_thinking_level_is_validated_up_front():
+    assert GeminiProvider("key", ["m"], "medium")._thinking == types.ThinkingLevel.MEDIUM
+    with pytest.raises(ProviderConfigError, match="GEMINI_THINKING_LEVEL"):
+        GeminiProvider("key", ["m"], "extreme")
+
+
 # ---------- conversions ----------
 
 def _messages_with_tool_round(raw):

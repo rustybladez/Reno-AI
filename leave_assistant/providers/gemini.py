@@ -27,6 +27,7 @@ DAILY_QUOTA_COOLDOWN_S = 3600.0  # per-day quota exhausted: don't retry that mod
 DEFAULT_COOLDOWN_S = 30.0  # per-minute quota / overloaded, when the server gives no retryDelay
 MAX_WAIT_S = 30.0  # longest we sleep when every model is cooling down
 RETIRED = float("inf")
+THINKING_LEVELS = {"MINIMAL", "LOW", "MEDIUM", "HIGH"}
 
 # Google's documented placeholder for function calls not produced by the model being called
 # (we use it when a tool loop switches models part-way).
@@ -59,6 +60,12 @@ class GeminiProvider:
             raise ProviderConfigError("No Gemini model configured (GEMINI_MODEL).")
         self.models = list(dict.fromkeys(models))  # primary first, then fallbacks; no duplicates
         self.thinking_level = thinking_level  # "minimal" | "low" | "medium" | "high" | None (model default)
+        # Checked against the known levels: the SDK enum accepts unknown values with only a warning.
+        if thinking_level and thinking_level.upper() not in THINKING_LEVELS:
+            raise ProviderConfigError(
+                f"GEMINI_THINKING_LEVEL {thinking_level!r} is not valid. Use minimal, low, medium or high."
+            )
+        self._thinking = types.ThinkingLevel(thinking_level.upper()) if thinking_level else None
         self.client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=TIMEOUT_MS))
         self.cooldown_until: dict[str, float] = {}  # model -> time.monotonic() when usable again
         self.model = self.models[0]  # last model used (shown in debug)
@@ -77,18 +84,19 @@ class GeminiProvider:
             response_schema=schema,
             tools=[_to_gemini_tools(tools)] if tools else None,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-            thinking_config=(
-                types.ThinkingConfig(thinking_level=self.thinking_level.upper()) if self.thinking_level else None
-            ),
+            thinking_config=types.ThinkingConfig(thinking_level=self._thinking) if self._thinking else None,
         )
         model, response = self._call_with_cycling(messages, config)
         self.model = model
 
         content = response.candidates[0].content if response.candidates else None
-        parts = (content.parts if content else None) or []
+        if content is None:
+            return ProviderResult(text=None, model=model)  # the assistant treats this as invalid output
+        parts = content.parts or []
         calls = [p.function_call for p in parts if p.function_call]
         if calls:
-            tool_calls = [ToolCall(name=c.name, args=dict(c.args or {}), id=c.id) for c in calls]
+            # A call without a name becomes an "unknown tool" error result in dispatch().
+            tool_calls = [ToolCall(name=c.name or "", args=dict(c.args or {}), id=c.id) for c in calls]
             return ProviderResult(tool_calls=tool_calls, raw=GeminiTurn(model, content), model=model)
         text = "".join(p.text for p in parts if p.text and not p.thought)
         return ProviderResult(text=text or None, model=model)
@@ -158,11 +166,12 @@ def _to_contents(messages: list[dict], model: str) -> list[types.Content]:
     contents: list[types.Content] = []
     for m in messages:
         if m["role"] == "tool":
-            part = types.Part.from_function_response(name=m["name"], response=m["content"])
-            part.function_response.id = m.get("id")
+            part = types.Part(function_response=types.FunctionResponse(
+                name=m["name"], response=m["content"], id=m.get("id"),
+            ))
             # All results for one round of calls go back in a single user turn.
             previous = contents[-1] if contents else None
-            if previous and previous.role == "user" and previous.parts[0].function_response:
+            if previous and previous.role == "user" and previous.parts and previous.parts[0].function_response:
                 previous.parts.append(part)
             else:
                 contents.append(types.Content(role="user", parts=[part]))

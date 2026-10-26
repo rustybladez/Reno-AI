@@ -146,8 +146,8 @@ def check_case(case: Case, response: AssistantResponse) -> CaseResult:
     # Exact texts for the fixed templates.
     if case.expected_type == "not_covered" and text != FALLBACK_TEXT:
         reasons.append("text is not exactly FALLBACK_TEXT")
-    if case.expected_type == "privacy_refusal" and text != PRIVACY_REFUSAL_TEXT:
-        reasons.append("text is not exactly PRIVACY_REFUSAL_TEXT")
+    if case.expected_type == "privacy_refusal" and not text.startswith(PRIVACY_REFUSAL_TEXT):
+        reasons.append("text does not start with the exact PRIVACY_REFUSAL_TEXT")
     if case.expected_type == "partial" and FALLBACK_TEXT not in text:
         reasons.append("FALLBACK_TEXT missing from partial answer")
 

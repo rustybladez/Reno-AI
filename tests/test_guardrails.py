@@ -7,6 +7,7 @@ from leave_assistant.guardrails import (
     quote_matches,
     unverified_numbers,
 )
+from leave_assistant.policy import parse_policy
 from leave_assistant.schema import Citation, LLMOutput
 
 GOOD_QUOTE = "Employees receive 99 days of Holiday Leave per year."
@@ -35,9 +36,26 @@ def test_fallback_ignores_any_model_text(example_policy):
 
 
 def test_privacy_rendering_equals_template(example_policy):
+    # The example policy has none of the confidentiality sections, so no Source line.
     response = apply_guardrails(output(type="privacy_refusal", answer="", citations=[]), example_policy)
     assert response.text == PRIVACY_REFUSAL_TEXT
     assert response.type == "privacy_refusal"
+
+
+def test_privacy_refusal_cites_confidentiality_sections_that_exist():
+    policy = parse_policy({"meta": {}, "sections": [
+        {"id": "9.1", "parent": "9", "heading": "Confidentiality of Leave Records",
+         "path": "9. Confidentiality of Leave Records", "text": "Leave records are confidential."},
+        {"id": "11.2", "parent": "11", "heading": "Policy Review and Contact",
+         "path": "11. Policy Review and Contact", "text": "Contact HR."},
+    ]})
+    response = apply_guardrails(output(type="privacy_refusal", answer="", citations=[]), policy)
+    assert response.text == (
+        PRIVACY_REFUSAL_TEXT + "\n\n**Source:** Section 9.1 – Confidentiality of Leave Records; "
+        "Section 11.2 – Policy Review and Contact"
+    )
+    assert [c.section_id for c in response.citations] == ["9.1", "11.2"]
+    assert response.citations[0].quote == "Leave records are confidential."
 
 
 def test_smalltalk_rendering(example_policy):

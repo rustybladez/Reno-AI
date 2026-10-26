@@ -22,10 +22,12 @@ FALLBACK_TEXT = "I don't know, please contact HR."
 PRIVACY_REFUSAL_TEXT = (
     "I'm sorry, but I can't share information about other employees. Leave records, including "
     "the reasons for leave and any medical information, are confidential and can only be accessed "
-    "by the employee concerned, their line manager and authorised HR staff (Section 9 – "
-    "Confidentiality of Leave Records). If you have a question about a colleague's leave, please "
-    "contact the HR Department at hr@xyz-company.example (Section 11.2)."
+    "by the employee concerned, their line manager and authorised HR staff. If you have a question "
+    "about a colleague's leave, please contact the HR Department at hr@xyz-company.example."
 )
+# Fixed citations for the refusal (confidentiality clauses and the HR contact), so it shows a
+# Source line and the policy text like any other answer. Chosen in code, never by the model.
+PRIVACY_SOURCE_IDS = ["9.1", "9.2", "9.3", "11.2"]
 
 SMALLTALK_TEXT = (
     "Hi! I can answer questions about the XYZ Company Leave Policy — for example annual, sick or "
@@ -195,7 +197,7 @@ def apply_guardrails(
         return _fallback(debug)
 
     if output.type == "privacy_refusal":
-        return AssistantResponse(type="privacy_refusal", text=PRIVACY_REFUSAL_TEXT, debug=debug)
+        return _privacy_refusal(policy, debug)
 
     if output.type == "smalltalk":
         return AssistantResponse(type="smalltalk", text=SMALLTALK_TEXT, debug=debug)
@@ -235,6 +237,14 @@ def apply_guardrails(
         calculations=output.calculations,
         debug=debug,
     )
+
+
+def _privacy_refusal(policy: Policy, debug: dict) -> AssistantResponse:
+    """The fixed refusal text, then the Source line for the sections that exist in this policy."""
+    ids = [sid for sid in PRIVACY_SOURCE_IDS if policy.get(sid)]
+    text = PRIVACY_REFUSAL_TEXT + ("\n\n" + render_sources(ids, policy) if ids else "")
+    citations = [Citation(section_id=sid, quote=policy.by_id[sid].text) for sid in ids]
+    return AssistantResponse(type="privacy_refusal", text=text, citations=citations, debug=debug)
 
 
 def _fallback(debug: dict) -> AssistantResponse:

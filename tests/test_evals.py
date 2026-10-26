@@ -90,8 +90,10 @@ def test_not_covered_must_be_exact_fallback():
 
 
 def test_privacy_must_be_exact_template():
-    good = response("privacy_refusal", PRIVACY_REFUSAL_TEXT, ())
+    good = response("privacy_refusal", PRIVACY_REFUSAL_TEXT + "\n\n**Source:** Section 9.1 – X", ())
     assert check_case(case(expected_type="privacy_refusal"), good).passed
+    altered = response("privacy_refusal", "Sorry, I can't share that.", ())
+    assert not check_case(case(expected_type="privacy_refusal"), altered).passed
     assert not check_case(case(expected_type="privacy_refusal"), response("answer", "No.", ())).passed
 
 

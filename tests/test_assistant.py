@@ -109,6 +109,14 @@ def test_history_is_sent_and_numbers_from_history_pass(example_policy):
     assert response.debug["unverified_numbers"] == []
 
 
+def test_numbers_from_earlier_assistant_answers_are_not_sources(example_policy):
+    q = "And how much is that?"
+    history = [Turn(role="user", content="How much leave?"), Turn(role="assistant", content="You get 45 days.")]
+    provider = FakeProvider({q: [final_json(answer="That is 45 days.", citations=[("2.1(a)", "99 days")])]})
+    response = run(provider, q, example_policy, history=history)
+    assert response.debug["unverified_numbers"] == ["45"]  # the bot's own earlier number doesn't count
+
+
 def test_debug_details(example_policy):
     q = "Hi"
     provider = FakeProvider({q: [final_json(type="smalltalk")]})

@@ -51,7 +51,8 @@ def ask(
 
     number_sources = (
         [question, today.isoformat(), format_today(today)]
-        + [t.content for t in history or []]
+        # Only the user's own turns: a number the assistant itself wrote earlier is not a source.
+        + [t.content for t in history or [] if t.role == "user"]
         + guardrails.tool_results_as_text(tool_log)
     )
     response = guardrails.apply_guardrails(output, policy, number_sources)

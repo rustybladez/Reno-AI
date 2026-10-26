@@ -37,8 +37,9 @@ def test_fallback_ignores_any_model_text(example_policy):
 
 def test_privacy_rendering_equals_template(example_policy):
     # The example policy has none of the confidentiality sections, so no Source line.
+    # The HR email comes from the policy's meta.hr_contact, not from the code.
     response = apply_guardrails(output(type="privacy_refusal", answer="", citations=[]), example_policy)
-    assert response.text == PRIVACY_REFUSAL_TEXT
+    assert response.text == PRIVACY_REFUSAL_TEXT + " at people@example.invalid."
     assert response.type == "privacy_refusal"
 
 
@@ -50,8 +51,8 @@ def test_privacy_refusal_cites_confidentiality_sections_that_exist():
          "path": "11. Policy Review and Contact", "text": "Contact HR."},
     ]})
     response = apply_guardrails(output(type="privacy_refusal", answer="", citations=[]), policy)
-    assert response.text == (
-        PRIVACY_REFUSAL_TEXT + "\n\n**Source:** Section 9.1 – Confidentiality of Leave Records; "
+    assert response.text == (  # no hr_contact in this policy's meta: the sentence just ends
+        PRIVACY_REFUSAL_TEXT + ".\n\n**Source:** Section 9.1 – Confidentiality of Leave Records; "
         "Section 11.2 – Policy Review and Contact"
     )
     assert [c.section_id for c in response.citations] == ["9.1", "11.2"]

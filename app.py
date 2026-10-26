@@ -45,6 +45,14 @@ SAMPLE_QUESTIONS = {
     ],
 }
 
+# One starter per behaviour reviewers check: in the policy, not in it, someone else's data.
+WELCOME_QUESTIONS = [
+    (":material/menu_book:", "Can I carry forward unused annual leave?"),
+    (":material/help:", "My cousin passed away. How many days of bereavement leave do I get?"),
+    (":material/lock:", "How many leave days has Rahim taken?"),
+]
+MAX_QUESTION_CHARS = 500
+
 BUSY_MESSAGE = "The assistant is busy right now. Please wait a minute and try again."
 SETUP_MESSAGE = "The assistant isn't set up yet. {error}"
 
@@ -162,11 +170,23 @@ def main() -> None:
             else:
                 st.markdown(message["content"])
 
+    # Before the first question, show starters in the main area too: on a phone the sidebar
+    # starts collapsed, so the page would otherwise be empty.
+    welcome = st.empty()
+    if not st.session_state.messages:
+        with welcome.container():
+            st.markdown("Ask a question about the leave policy, or try one of these:")
+            for i, (icon, starter) in enumerate(WELCOME_QUESTIONS):
+                if st.button(starter, icon=icon, key=f"welcome_{i}", width="stretch"):
+                    st.session_state.pending_question = starter
+
     # "disable": no second question while one is being answered (avoids duplicate model calls).
-    typed = st.chat_input("Ask about the leave policy…", submit_mode="disable")
+    # max_chars: a public link on a paid key — a pasted essay shouldn't cost money.
+    typed = st.chat_input("Ask about the leave policy…", submit_mode="disable", max_chars=MAX_QUESTION_CHARS)
     question = typed or st.session_state.pop("pending_question", None)
 
     if question:
+        welcome.empty()
         history = [Turn(role=m["role"], content=m["content"]) for m in st.session_state.messages]
         st.session_state.messages.append({"role": "user", "content": question})
         with st.chat_message("user"):

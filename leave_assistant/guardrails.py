@@ -23,15 +23,15 @@ PRIVACY_REFUSAL_TEXT = (
     "I'm sorry, but I can't share information about other employees. Leave records, including "
     "the reasons for leave and any medical information, are confidential and can only be accessed "
     "by the employee concerned, their line manager and authorised HR staff. If you have a question "
-    "about a colleague's leave, please contact the HR Department at hr@xyz-company.example."
-)
+    "about a colleague's leave, please contact the HR Department"
+)  # completed by privacy_refusal_text() with " at <HR email from the policy>."
 # Fixed citations for the refusal (confidentiality clauses and the HR contact), so it shows a
 # Source line and the policy text like any other answer. Chosen in code, never by the model.
 PRIVACY_SOURCE_IDS = ["9.1", "9.2", "9.3", "11.2"]
 
 SMALLTALK_TEXT = (
-    "Hi! I can answer questions about the XYZ Company Leave Policy — for example annual, sick or "
-    "casual leave, how to apply, or notice requirements."
+    "I'm here to help with the XYZ Company Leave Policy — for example annual, sick or casual "
+    "leave, how to apply, or notice requirements."
 )
 
 PARTIAL_SUFFIX = "For the rest of your question: " + FALLBACK_TEXT
@@ -239,10 +239,16 @@ def apply_guardrails(
     )
 
 
+def privacy_refusal_text(policy: Policy) -> str:
+    """The fixed refusal, ending with the HR email from the policy itself (not typed into the code)."""
+    hr_email = policy.meta.get("hr_contact")
+    return PRIVACY_REFUSAL_TEXT + (f" at {hr_email}." if hr_email else ".")
+
+
 def _privacy_refusal(policy: Policy, debug: dict) -> AssistantResponse:
     """The fixed refusal text, then the Source line for the sections that exist in this policy."""
     ids = [sid for sid in PRIVACY_SOURCE_IDS if policy.get(sid)]
-    text = PRIVACY_REFUSAL_TEXT + ("\n\n" + render_sources(ids, policy) if ids else "")
+    text = privacy_refusal_text(policy) + ("\n\n" + render_sources(ids, policy) if ids else "")
     citations = [Citation(section_id=sid, quote=policy.by_id[sid].text) for sid in ids]
     return AssistantResponse(type="privacy_refusal", text=text, citations=citations, debug=debug)
 

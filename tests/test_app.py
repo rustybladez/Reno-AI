@@ -83,6 +83,23 @@ def test_hr_email_only_under_fallback_answers(app_with):
     assert "mailto:" not in all_markdown(at)
 
 
+def test_welcome_starters_show_on_empty_chat_and_send_their_question(app_with):
+    q = "How many leave days has Rahim taken?"
+    at = app_with(FakeProvider({q: [final_json("privacy_refusal")]}))
+    starters = [b for b in at.main.button if b.key and b.key.startswith("welcome_")]
+    assert len(starters) == 3
+
+    next(b for b in starters if b.label == q).click().run()
+    assert not at.exception
+    assert [m.value for m in at.chat_message[0].markdown] == [q]
+    assert not [b for b in at.main.button if b.key and b.key.startswith("welcome_")]  # gone once chatting
+
+
+def test_question_length_is_limited(app_with):
+    at = app_with(FakeProvider({}))
+    assert at.chat_input[0].max_chars == 500
+
+
 def test_debug_toggle_shows_debug_details(app_with):
     q = "Hi"
     at = app_with(FakeProvider({q: [final_json("smalltalk")]}))

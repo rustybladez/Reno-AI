@@ -1,6 +1,8 @@
 # Reno AI — Leave Policy Assistant
 
-**Live demo:** _link added after deployment_ · no login needed
+**Live demo: https://reno-ai-leave-assistant.streamlit.app/** · no login needed
+
+If the page says the app has gone to sleep (Streamlit pauses apps that haven't been visited for a while), click the button to wake it and wait about 30 seconds.
 
 ## What it does
 
@@ -12,12 +14,21 @@ An assistant that answers employee questions using **only** the sample XYZ Compa
 
 ## Quick start
 
-Needs [uv](https://docs.astral.sh/uv/) and Python 3.12.
+Needs Python 3.12 and [uv](https://docs.astral.sh/uv/) (or plain pip, below).
 
 ```bash
 uv sync                          # 1. install
 cp .env.example .env             # 2. add an API key (see below); policy file at data/policy.json
 uv run streamlit run app.py      # 3. open http://localhost:8501
+```
+
+Without uv:
+
+```bash
+python -m venv .venv && .venv\Scripts\activate     # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt                    # generated from uv.lock (uv export)
+cp .env.example .env                               # Windows cmd: copy .env.example .env
+streamlit run app.py
 ```
 
 **API keys.** Set at least one in `.env`; with both, the first answers and the second takes over if it is busy.
@@ -35,7 +46,7 @@ Command-line check without the UI: `uv run python -m leave_assistant "Can I carr
 
 ### Deploying to Streamlit Community Cloud
 
-1. New app → this repository, branch `main`, main file `app.py`; under *Advanced settings* choose Python 3.12. Dependencies install from `uv.lock`.
+1. New app → this repository, branch `main`, main file `app.py`; under *Advanced settings* choose Python 3.12. Dependencies install from `uv.lock` (Community Cloud reads it before `requirements.txt`, which is only for pip users).
 2. Generate the secrets (the policy goes in as `POLICY_JSON`, since it isn't in the repository): `uv run python scripts/make_secrets.py > secrets.txt`, then replace the key placeholders.
 3. Paste the whole of `secrets.txt` into *App settings → Secrets*, save, and reboot the app. `secrets.txt` is gitignored; delete it afterwards.
 
@@ -81,39 +92,43 @@ The model only **classifies and drafts**. What the user sees is decided by deter
 ## Tests and evaluation
 
 ```bash
-uv run pytest                                  # 127 offline tests, no API calls
+uv run pytest                                  # 133 offline tests, no API calls
 uv run python -m evals.run_evals --no-fallback --delay 0   # full eval suite (needs keys + the real cases)
 ```
 
+Without `data/policy.json` (e.g. a fresh clone of the public repository), 8 tests that check the real policy file are skipped and the rest pass. The tests use `uv sync`'s dev dependencies; with pip, also run `pip install pytest`.
+
 The eval suite has **66 cases from the brief and PRD** (in-policy, not covered, privacy, colleague questions, partial, prompt injection, calculations) plus **14 hold-out cases**. All checks are deterministic: exact fallback and refusal texts, cited sections, required facts, required tool calls, and that no number in an answer is unsourced. Results are written to `evals/results/`.
 
-**Latest results** (eval date fixed at 26 Oct 2026, final prompt):
+**Latest results** (eval date fixed at 26 Oct 2026):
 
-| Category | Target | DeepSeek `deepseek-flash` (2 runs) | Gemini `3.5-flash-lite` |
+| Category | Target | DeepSeek `deepseek-flash` (2 runs, final prompt) | Gemini `3.5-flash-lite` (previous prompt*) |
 |---|---|---|---|
 | Not covered (exact fallback) | 100% | 10/10, 10/10 | 10/10 |
 | Privacy (exact refusal) | 100% | 5/5, 5/5 | 5/5 |
 | Prompt injection | 100% | 3/3, 3/3 | 3/3 |
 | Calculations | ≥ 90% | 16/16, 16/16 | 15/16 |
 | In policy | — | 26/26, 26/26 | 24/26 |
-| Colleague policy questions | — | 1/2, 1/2 | 1/2 |
+| Colleague policy questions | — | 2/2, 2/2 | 1/2 |
 | Partial, smalltalk | — | 3/3, 3/3 | 3/3 |
-| **Overall** | ≥ 95% | **64/65 (98%), 64/65 (98%)** | **61/65 (94%)** |
-| **Hold-out** (not used for tuning) | — | 13/14, 13/14 | 14/14 |
+| **Overall** | ≥ 95% | **65/65 (100%), 65/65 (100%)** | **61/65 (94%)** |
+| **Hold-out** (not used for tuning) | — | 13/14, 14/14 | 14/14 |
 
 Mean response time: about 2.8 s on DeepSeek, 3.5 s on Gemini (calculations take longer: one model call per tool round).
 
-**Gemini as the fallback** meets every hard requirement (not covered, privacy and injection all 100%) but is just under the 95% overall target: its four misses are all "I don't know, please contact HR." on questions the policy does answer. They come from the stricter no-inference rules added while tuning DeepSeek — the safe direction of error, and the reason DeepSeek, not Gemini, is the primary.
+\* The Gemini run used the prompt *before* the final rule (on statuses the policy defines) was added. Re-running it on the final prompt was cut short because the free tier's daily quota for the model ran out during testing — the same problem that made DeepSeek the primary.
+
+**Gemini as the fallback** meets every hard requirement (not covered, privacy and injection all 100%) but was just under the 95% overall target: its misses were all "I don't know, please contact HR." on questions the policy does answer — the safe direction of error, and the reason DeepSeek, not Gemini, is the primary.
 
 **How the prompt was tuned, honestly.** The prompt was improved by running the suite and fixing failures with *general* rules (e.g. "the policy being silent is never a rule", "tools only for real calculations") — never by quoting test questions in the prompt. The hold-out cases were added afterwards to check that this generalises. One later rule (about lists of eligible relatives) was prompted partly by a hold-out failure, so the hold-out set is no longer fully unseen; the main-set case B01 motivates the same rule.
 
-**The remaining failure** is the same in every DeepSeek run: for one eligibility question whose answer needs two clauses combined (an eligibility condition in one section, its meaning in another), it answers "I don't know, please contact HR." instead. This is the safe direction of error — it declines rather than guesses — and comes from the strict no-inference rules that fixed real over-reach elsewhere.
+**What still varies between runs.** The one hold-out miss (13/14 in one run) was a correct date the model worked out itself instead of with a date tool; the number check flagged it, as designed. An earlier version of the prompt consistently declined one eligibility question whose answer needs two clauses combined (a required status in one clause, its definition in another). A general rule now separates that from a case the policy never mentions (which stays "I don't know"). The rule was written while both the main-set case and its hold-out counterpart were failing, so that hold-out case is not an unseen test of it.
 
 ## Limitations and next steps
 
 - **Hand-verified ingestion doesn't scale** to many policies. Next: automated extraction with a review screen, and retrieval once there are many documents.
 - **No identity or records integration:** it can't answer "how many days do I have left?". Next: connect to the HR system with proper authentication, so employees see only their own records.
-- **Strictness vs. helpfulness:** the no-inference rules occasionally decline a question the policy does answer by combining clauses (see above).
+- **Strictness vs. helpfulness:** the no-inference rules are a trade-off: too loose and the model reasons past the policy, too strict and it declines answerable questions. The current balance passes every case, but new kinds of question may find the edge.
 - **Small eval set** (80 cases); results vary slightly between runs because LLMs are not fully deterministic even at temperature 0. Next: more cases, written by HR staff.
 - **Bangla** works in tests but is not tuned or counted in the targets.
 

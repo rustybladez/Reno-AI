@@ -5,7 +5,10 @@ from dataclasses import dataclass
 
 from .config import Settings
 
-POLICY_NOT_FOUND_MESSAGE = "Policy file not found. See README → Setup."
+POLICY_NOT_FOUND_MESSAGE = (
+    "Policy file not found. Put it at data/policy.json (it is in the submission zip; the public "
+    "repository leaves it out on purpose) or set the POLICY_JSON secret. See README → Quick start."
+)
 
 
 class PolicyNotFoundError(Exception):

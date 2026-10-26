@@ -33,6 +33,12 @@ Any OpenAI-compatible endpoint works in place of DeepSeek (`OPENAI_COMPAT_BASE_U
 
 Command-line check without the UI: `uv run python -m leave_assistant "Can I carry forward unused annual leave?" --debug`
 
+### Deploying to Streamlit Community Cloud
+
+1. New app → this repository, branch `main`, main file `app.py`; under *Advanced settings* choose Python 3.12. Dependencies install from `uv.lock`.
+2. Generate the secrets (the policy goes in as `POLICY_JSON`, since it isn't in the repository): `uv run python scripts/make_secrets.py > secrets.txt`, then replace the key placeholders.
+3. Paste the whole of `secrets.txt` into *App settings → Secrets*, save, and reboot the app. `secrets.txt` is gitignored; delete it afterwards.
+
 ## Try these
 
 In the live demo or locally (they are also in the app's sidebar):

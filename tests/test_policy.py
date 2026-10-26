@@ -34,7 +34,8 @@ def test_missing_policy_gives_clear_error(tmp_path):
     settings = _settings(policy_json=None, policy_path=tmp_path / "missing.json")
     with pytest.raises(PolicyNotFoundError, match="Policy file not found"):
         load_policy(settings)
-    assert POLICY_NOT_FOUND_MESSAGE == "Policy file not found. See README → Setup."
+    assert POLICY_NOT_FOUND_MESSAGE.startswith("Policy file not found.")
+    assert "README → Quick start" in POLICY_NOT_FOUND_MESSAGE
 
 
 # ---------- lookups ----------

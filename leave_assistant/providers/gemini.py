@@ -54,7 +54,7 @@ class GeminiProvider:
         thinking_level: str | None = None,
     ):
         if not api_key:
-            raise ProviderConfigError("GEMINI_API_KEY is not set. See README → Setup.")
+            raise ProviderConfigError("GEMINI_API_KEY is not set. See README → Quick start.")
         if not models:
             raise ProviderConfigError("No Gemini model configured (GEMINI_MODEL).")
         self.models = list(dict.fromkeys(models))  # primary first, then fallbacks; no duplicates

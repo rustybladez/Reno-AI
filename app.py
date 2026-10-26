@@ -45,17 +45,23 @@ SAMPLE_QUESTIONS = {
 }
 
 BUSY_MESSAGE = "The assistant is busy right now. Please wait a minute and try again."
-SETUP_MESSAGE = "The assistant isn't set up yet: {error} See README → Setup."
+SETUP_MESSAGE = "The assistant isn't set up yet. {error}"
 
 
-def copy_secrets_to_env() -> None:
-    """On Streamlit Cloud, settings come from st.secrets; the package reads the environment."""
+def copy_secrets_to_env() -> str | None:
+    """On Streamlit Cloud, settings come from st.secrets; the package reads the environment.
+
+    Returns an error message if secrets exist but can't be parsed (e.g. a truncated POLICY_JSON).
+    """
     try:
         secrets = {name: st.secrets[name] for name in SETTING_NAMES if name in st.secrets}
-    except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
-        return  # no secrets file: running locally with .env
+    except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError) as e:
+        # Streamlit raises the same error for "no secrets file" (fine locally: .env is used)
+        # and for a malformed one, which must not be ignored silently.
+        return str(e) if "Error parsing secrets" in str(e) else None
     for name, value in secrets.items():
         os.environ[name] = str(value)
+    return None
 
 
 @st.cache_resource
@@ -66,6 +72,11 @@ def cached_provider():
 
 def render_answer(response: AssistantResponse, show_debug: bool) -> None:
     st.markdown(response.text)
+    if response.type in ("not_covered", "partial"):
+        # Shown under the answer, not inside it, so the fallback sentence itself stays exact.
+        hr_email = get_policy().meta.get("hr_contact")
+        if hr_email:
+            st.markdown(f"HR email: [{hr_email}](mailto:{hr_email})")
     if response.citations:
         policy = get_policy()
         with st.expander("Policy text", icon=":material/menu_book:", type="compact"):
@@ -114,7 +125,14 @@ def sidebar(today_text: str, provider_label: str) -> bool:
 
 def main() -> None:
     st.set_page_config(page_title="Reno AI", page_icon=":material/description:")
-    copy_secrets_to_env()
+    secrets_error = copy_secrets_to_env()
+    if secrets_error:
+        st.error(
+            f"{secrets_error}. Check the Secrets box: each value must be valid TOML, and POLICY_JSON "
+            "must start and end with three single quotes. Regenerate it with scripts/make_secrets.py.",
+            title="The app's secrets couldn't be read",
+        )
+        st.stop()
 
     st.title("Reno AI — Leave Policy Assistant")
     st.caption(

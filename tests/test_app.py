@@ -71,7 +71,16 @@ def test_sample_button_sends_its_question(app_with):
     at = app_with(FakeProvider({q: [final_json("not_covered")]}))
     next(b for b in at.sidebar.button if b.label == q).click().run()
 
-    assert FALLBACK_TEXT in all_markdown(at)
+    answer, contact = [m.value for m in at.chat_message[1].markdown]
+    assert answer == FALLBACK_TEXT  # the fallback sentence stays exact
+    assert contact == "HR email: [people@example.invalid](mailto:people@example.invalid)"
+
+
+def test_hr_email_only_under_fallback_answers(app_with):
+    q = "How much holiday leave?"
+    at = app_with(FakeProvider({q: [final_json("answer", "You get 99 days.", [("2.1(a)", "99 days")])]}))
+    at.chat_input[0].set_value(q).run()
+    assert "mailto:" not in all_markdown(at)
 
 
 def test_debug_toggle_shows_debug_details(app_with):

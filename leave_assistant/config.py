@@ -19,7 +19,7 @@ DEFAULT_PROVIDER = "gemini"
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 # Tried in order when the current model is busy or out of free quota (quotas are per model).
 DEFAULT_GEMINI_FALLBACK_MODELS = "gemini-flash-lite-latest,gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-3.5-flash"
-DEFAULT_GEMINI_THINKING_LEVEL = "low"  # lite models at their default (minimal) thinking stretch rules by analogy
+DEFAULT_GEMINI_THINKING_LEVEL = "medium"  # at "low", lite models skipped tool calls and guessed dates (M4 evals)
 DEFAULT_POLICY_PATH = "data/policy.json"
 
 

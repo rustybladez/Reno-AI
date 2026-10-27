@@ -28,6 +28,9 @@ def app_with(monkeypatch):
     """Returns a function that starts the app with a given provider and the dummy policy."""
     monkeypatch.setenv("POLICY_PATH", str(EXAMPLE_POLICY_PATH))
     monkeypatch.setenv("POLICY_JSON", "")
+    # Fake keys, so the tests never depend on a developer's .env (a fresh clone has none).
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_COMPAT_API_KEY", "")
 
     def start(provider):
         get_policy.cache_clear()
@@ -119,6 +122,35 @@ def test_busy_provider_shows_friendly_message(app_with):
     at.chat_input[0].set_value("Anything?").run()
     assert not at.exception
     assert "busy right now" in at.warning[0].value
+
+
+def test_without_any_key_the_app_asks_for_one_and_uses_it_for_the_session(app_with, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "")  # e.g. a local run with no .env file
+    built_with = []
+    q = "How much holiday leave?"
+    provider = FakeProvider({q: [final_json("answer", "You get 99 days.", [("2.1(a)", "99 days")])]})
+
+    at = app_with(provider)
+    monkeypatch.setattr(providers, "get_provider", lambda settings: built_with.append(settings) or provider)
+    assert "An API key is needed" in at.info[0].title
+    assert not at.chat_input  # no chat until a key is given
+
+    at.text_input[0].set_value("  pasted-gemini-key  ")
+    at.button[0].click().run()
+    assert built_with[-1].gemini_api_key == "pasted-gemini-key"  # trimmed, used for this session
+
+    at.chat_input[0].set_value(q).run()
+    assert not at.exception
+    assert "You get 99 days." in all_markdown(at)
+    assert any(b.label == "Use a different API key" for b in at.sidebar.button)
+
+
+def test_key_form_needs_at_least_one_key(app_with, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    at = app_with(FakeProvider({}))
+    at.button[0].click().run()
+    assert "at least one key" in at.warning[0].value
+    assert not at.chat_input
 
 
 def test_missing_policy_shows_setup_message(app_with, monkeypatch, tmp_path):

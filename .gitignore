@@ -234,4 +234,6 @@ secrets.txt
 .agents/
 .claude/skills/
 
+*.mp4dist/
 *.mp4
+*.mov

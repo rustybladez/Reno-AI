@@ -14,24 +14,37 @@ An assistant that answers employee questions using **only** the sample XYZ Compa
 
 ## Quick start
 
-Needs Python 3.12 and [uv](https://docs.astral.sh/uv/) (or plain pip, below).
+The easiest way to try it is the **live demo** above. To run it on your own computer:
+
+**1. Get the project.** Unzip `Reno-AI.zip` from the submission email: it includes the policy file, so nothing else needs to be downloaded. (A clone of the public repository has no policy file; see *Confidentiality*.)
+
+**2. Install and run** from the `Reno-AI` folder, with whichever of these suits you. The app then opens at http://localhost:8501.
+
+*Option A — you already have Python 3.12 or newer* (check with `python --version`): plain pip.
 
 ```bash
-uv sync                          # 1. install
-cp .env.example .env             # 2. add an API key (see below); policy file at data/policy.json
-uv run streamlit run app.py      # 3. open http://localhost:8501
-```
-
-Without uv:
-
-```bash
-python -m venv .venv && .venv\Scripts\activate     # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt                    # generated from uv.lock (uv export)
-cp .env.example .env                               # Windows cmd: copy .env.example .env
+python -m venv .venv
+.venv\Scripts\activate                 # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
 streamlit run app.py
 ```
 
-**API keys.** Set at least one in `.env`; with both, the first answers and the second takes over if it is busy.
+*Option B — no Python, or an older one:* [uv](https://docs.astral.sh/uv/) installs the right Python by itself. Install uv once, then one command installs everything (about a minute the first time) and starts the app:
+
+```bash
+# Install uv — Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Install uv — macOS / Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+uv run streamlit run app.py
+```
+
+Tested on Python 3.12 and 3.13. Python 3.11 and older won't work: some pinned packages (e.g. numpy) need 3.12+.
+
+**3. Paste an API key** into the box the app shows. A free Gemini key is enough (get one at aistudio.google.com/apikey). The key is kept only in that browser session and never saved.
+
+**API keys in a file instead.** To avoid pasting a key each time, copy `.env.example` to `.env` and set at least one key there; with both, the first answers and the second takes over if it is busy.
 
 | Provider | Variable | Notes |
 |---|---|---|
@@ -40,7 +53,7 @@ streamlit run app.py
 
 Any OpenAI-compatible endpoint works in place of DeepSeek (`OPENAI_COMPAT_BASE_URL`, `OPENAI_COMPAT_MODEL`), including a self-hosted model. All settings are listed in [.env.example](.env.example).
 
-**The policy file.** `data/policy.json` is not in the public repository (see *Confidentiality* below); it is included in the submitted zip. Without it the app shows a setup message.
+**The policy file.** `data/policy.json` is not in the public repository (see *Confidentiality* below); it is included in the submitted zip (built with `uv run python scripts/make_submission_zip.py`, which refuses to write the zip if any API key would be inside). Without it the app shows a setup message.
 
 Command-line check without the UI: `uv run python -m leave_assistant "Can I carry forward unused annual leave?" --debug`
 
@@ -140,7 +153,7 @@ Mean response time: about 2.8 s on DeepSeek, 3.5 s on Gemini (calculations take 
 
 ## Confidentiality
 
-The assessment asks that the sample policy is not shared outside the assessment, so the policy file (`data/policy.json`), the real eval cases (`evals/cases.yaml`) and their results are **gitignored**. The public repository contains only a dummy example policy and example cases, so tests run without the real document. On Streamlit Cloud the policy is supplied as a secret (`POLICY_JSON`, generated with [scripts/make_secrets.py](scripts/make_secrets.py)).
+The assessment asks that the sample policy is not shared outside the assessment, so the policy file (`data/policy.json`), the real eval cases (`evals/cases.yaml`) and their results are **gitignored**. The public repository contains only a dummy example policy and example cases, so tests run without the real document. The reviewers receive both files privately, in the zip attached to the submission email; on Streamlit Cloud the policy is supplied as a secret (`POLICY_JSON`, generated with [scripts/make_secrets.py](scripts/make_secrets.py)).
 
 ## Project layout
 
@@ -154,6 +167,6 @@ leave_assistant/           the assistant (no Streamlit imports)
   providers/               DeepSeek (OpenAI-compatible), Gemini, chain, fake (tests)
 prompts/system_prompt.md   the system prompt
 evals/                     eval runner and example cases
-scripts/                   policy extraction, secrets helper
+scripts/                   policy extraction, secrets helper, submission zip
 tests/                     offline unit tests
 ```

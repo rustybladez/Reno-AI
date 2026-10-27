@@ -6,6 +6,7 @@ All answering logic lives in leave_assistant.ask(); this file only handles the c
 Conversations live in st.session_state only and are never stored.
 """
 
+import dataclasses
 import os
 
 import streamlit as st
@@ -79,6 +80,37 @@ def cached_provider():
     return get_provider(load_settings())
 
 
+def api_key_form() -> None:
+    """Shown only when no API key is configured (e.g. running the project locally without a .env).
+
+    The key builds a provider for this browser session only: it is never saved, written to disk
+    or shared with other sessions. On the hosted app the keys come from secrets, so this never shows.
+    """
+    st.info(
+        "Paste an API key to start. It is kept only in this browser session and is never saved. "
+        "A free Gemini key is enough.",
+        title="An API key is needed",
+        icon=":material/key:",
+    )
+    with st.form("api_key"):
+        gemini_key = st.text_input("Gemini API key — free at aistudio.google.com/apikey", type="password")
+        deepseek_key = st.text_input("DeepSeek API key (optional) — platform.deepseek.com", type="password")
+        submitted = st.form_submit_button("Start", icon=":material/play_arrow:")
+    st.caption("Alternatively, put the key in a .env file (see README → Quick start) and restart.")
+
+    if submitted:
+        keys = {"gemini_api_key": gemini_key.strip() or None, "openai_compat_api_key": deepseek_key.strip() or None}
+        if not any(keys.values()):
+            st.warning("Please paste at least one key.")
+        else:
+            try:
+                st.session_state.session_provider = get_provider(dataclasses.replace(load_settings(), **keys))
+                st.rerun()
+            except ProviderConfigError as e:
+                st.error(str(e))
+    st.stop()
+
+
 def render_answer(response: AssistantResponse, show_debug: bool) -> None:
     st.markdown(response.text)
     if response.type in ("not_covered", "partial"):
@@ -120,6 +152,9 @@ def sidebar(today_text: str, provider_label: str) -> bool:
             st.session_state.messages = []
             st.rerun()
         show_debug = st.toggle("Show debug details", value=False)
+        if st.session_state.get("session_provider") and st.button("Use a different API key", icon=":material/key:"):
+            del st.session_state.session_provider
+            st.rerun()
 
         st.divider()
         st.markdown("### About")
@@ -151,10 +186,20 @@ def main() -> None:
 
     try:
         get_policy()
-        provider = cached_provider()
-    except (PolicyNotFoundError, ProviderConfigError) as e:
+    except PolicyNotFoundError as e:
         st.error(SETUP_MESSAGE.format(error=e), title="Setup needed")
         st.stop()
+
+    provider = st.session_state.get("session_provider")  # from a key pasted into this session
+    if provider is None:
+        settings = load_settings()
+        if not (settings.gemini_api_key or settings.openai_compat_api_key):
+            api_key_form()  # local run without a .env file: ask for a key instead (stops the script)
+        try:
+            provider = cached_provider()
+        except ProviderConfigError as e:
+            st.error(SETUP_MESSAGE.format(error=e), title="Setup needed")
+            st.stop()
 
     today = today_in_dhaka()
     provider_label = " → ".join(getattr(provider, "models", [provider.model]))  # primary, then fallback

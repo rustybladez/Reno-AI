@@ -233,3 +233,5 @@ secrets.txt
 # Agent skills Streamlit links into .venv (local only; broken links anywhere else)
 .agents/
 .claude/skills/
+
+*.mp4

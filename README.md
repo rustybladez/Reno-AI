@@ -16,7 +16,7 @@ An assistant that answers employee questions using **only** the sample XYZ Compa
 
 The easiest way to try it is the **live demo** above. To run it on your own computer:
 
-**1. Get the project.** Unzip `Reno-AI.zip` from the submission email: it includes the policy file, so nothing else needs to be downloaded. (A clone of the public repository has no policy file; see *Confidentiality*.)
+**1. Get the project.** Unzip `Reno-AI.zip`: it includes the policy file, so nothing else needs to be downloaded. (A clone of the public repository has no policy file; see *Confidentiality*.)
 
 **2. Install and run** from the `Reno-AI` folder, with whichever of these suits you. The app then opens at http://localhost:8501.
 
